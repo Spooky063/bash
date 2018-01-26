@@ -1,0 +1,59 @@
+#!/bin/bash
+
+while [ -z ${name} ]; do
+	read -p "Name of project []: " name;
+done
+
+while [ -z ${path_dir} ]; do
+	read -p "Path directory of project (/var/www/<name>) []: " path_dir;
+done
+
+while [ -z ${domain_dev} ]; do
+	read -p "Website URL in development environment (<name>.localhost) []: " domain_dev;
+done
+
+read -p "Website URL in production environment []: " domain_prod;
+
+read -p "Version of PHP (5.6, 7.0, 7.1, 7.2) []: " php;
+while ! which php"$php" 2>/dev/null; do
+  read -p "PHP version not install, please retry: " php;
+done
+
+echo '<VirtualHost *:80>
+	ServerName %{DOMAIN_DEV}
+	ServerAlias *.%{DOMAIN_DEV}
+
+	DocumentRoot %{PATH_DIR}/
+
+	<FilesMatch ".+\.ph(p[567]?|t|tml)$">
+		SetHandler "proxy:unix:/run/php/php%{PHP}-fpm.sock|fcgi://localhost"
+	</FilesMatch>
+
+	<Directory "%{PATH_DIR}">
+		Options FollowSymLinks Indexes
+		AllowOverride All
+		Require all granted
+	</Directory>
+
+	LogLevel warn
+	ErrorLog ${APACHE_LOG_DIR}/error_%{NAME}.log
+	CustomLog ${APACHE_LOG_DIR}/access_%{NAME}.log combined' > ${name}.conf
+
+if [[ ! -z ${domain_prod} && -n ${domain_prod} ]]; then
+	echo '
+	Redirect "/prod"	"%{DOMAIN_PROD}"' >> ${name}.conf
+fi
+
+echo '
+	SetEnv ENVRIONMENT dev
+</VirtualHost>' >> ${name}.conf
+
+sed -i "s|%{DOMAIN_DEV}|${domain_dev}|g" ${name}.conf
+sed -i "s|%{PATH_DIR}|${path_dir}|g" ${name}.conf
+sed -i "s|%{NAME}|${name}|g" ${name}.conf
+sed -i "s|%{DOMAIN_PROD}|${domain_prod}|g" ${name}.conf
+sed -i "s|%{PHP}|${php}|g" ${name}.conf
+
+if [ -f ${name}.conf ]; then
+	chown `id -u -n`:www-data ${name}.conf
+fi
