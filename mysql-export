@@ -13,11 +13,11 @@ DB_PORT=""
 function checking_vars {
   echo -n "* Checking if needed vars are set... "
   ERROR_MSG=""
-	if [ -z "$DB_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_USER";fi
-	if [ -z "$DB_HOST" ]; then DB_HOST="localhost";fi
+  if [ -z "$DB_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_USER";fi
+  if [ -z "$DB_HOST" ]; then DB_HOST="localhost";fi
   if [ -z "$DB_PORT" ]; then DB_PORT="3306";fi
-	if [ ! -z "$ERROR_MSG" ]; then fatal "$ERROR_MSG";fi
-	echo "DONE"
+  if [ ! -z "$ERROR_MSG" ]; then fatal "$ERROR_MSG";fi
+  echo "DONE"
 }
 
 function checking_mysql {
