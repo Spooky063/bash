@@ -4,22 +4,22 @@ mysql=`which mysql`
 
 export MYSQL_PWD
 
-DB_DEST_DBFILE=$1
-DB_DEST_DBNAME=${DB_DEST_DBFILE%%.*}
-DB_DEST_EXT=${DB_DEST_DBFILE##*.}
-DB_DEST_USER="root"
-DB_DEST_HOST=""
-DB_DEST_PORT=""
+DB_FILE=$1
+DB_NAME=${DB_FILE%%.*}
+DB_EXT=${DB_FILE##*.}
+DB_USER="root"
+DB_HOST=""
+DB_PORT=""
 
 function checking_vars {
   echo -n "* Checking if needed vars are set... "
-    ERROR_MSG=""
-  		if [ -z "$DB_DEST_DBNAME" ]; then ERROR_MSG="$ERROR_MSG NO DB_DEST_DBNAME";fi
-  		if [ -z "$DB_DEST_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_DEST_USER";fi
-  		if [ -z "$DB_DEST_HOST" ]; then DB_DEST_HOST="localhost";fi
-      if [ -z "$DB_DEST_PORT" ]; then DB_DEST_PORT="3306";fi
-  		if [ ! -z "$ERROR_MSG" ]; then fatal "$ERROR_MSG";fi
-  	echo "DONE"
+  ERROR_MSG=""
+	if [ -z "$DB_NAME" ]; then ERROR_MSG="$ERROR_MSG NO DB_NAME";fi
+	if [ -z "$DB_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_USER";fi
+	if [ -z "$DB_HOST" ]; then DB_HOST="localhost";fi
+  if [ -z "$DB_PORT" ]; then DB_PORT="3306";fi
+	if [ ! -z "$ERROR_MSG" ]; then fatal "$ERROR_MSG";fi
+	echo "DONE"
 }
 
 function checking_mysql {
@@ -32,17 +32,20 @@ function checking_mysql {
 
 function checking_connexion {
   read -s -p "Enter MYSQL root password: " MYSQL_PWD; echo
-  while ! $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -p"$MYSQL_PWD" -e ";" 2>/dev/null ; do
+  while ! $mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$MYSQL_PWD" -e ";" 2>/dev/null ; do
     read -s -p "Can't connect, please retry: " MYSQL_PWD; echo
   done
+
+  mysql_command="$mysql -h $DB_HOST -P $DB_PORT -u $DB_USER"
+  mysqldump_command="$mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER"
 }
 
 function checking_database {
   echo -n "* Checking if the requested database exists... ";
   DB_EXIST=0
-  DBS=`$mysql -u $DB_DEST_USER -h $DB_DEST_HOST -Bse 'show databases'| egrep -v 'information_schema|$mysql'`
+  DBS=`$mysql_command -Bse 'show databases'| egrep -v 'information_schema|$mysql'`
   for db in $DBS; do
-  	if [ "$db" = "$DB_DEST_DBNAME" ]; then DB_EXIST=1; fi;
+  	if [ "$db" = "$DB_NAME" ]; then DB_EXIST=1; fi;
   done
   if [ "$DB_EXIST" = "1"  ]; then
     echo -n "YES, overwrite? 'y/n': "
@@ -52,7 +55,7 @@ function checking_database {
   		mysql_db_drop
   		;;
     	*)
-    		echo "$DB_DEST_DBNAME has not been dropped."; exit 0
+    		echo "$DB_NAME has not been dropped."; exit 0
     		;;
   	esac
   else
@@ -61,42 +64,42 @@ function checking_database {
 }
 
 function mysql_user_drop {
-  echo -n "* Drop user... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "DROP USER '$DB_DEST_DBNAME'@'localhost';"
+  echo -n "-- Drop user... "
+  $mysql_command -e "DROP USER '$DB_NAME'@'localhost';"
   echo -n "DONE"; echo
 }
 
 function mysql_user_create {
-  echo -n "* Create user... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "CREATE USER '$DB_DEST_DBNAME'@'localhost' IDENTIFIED BY '$DB_DEST_DBNAME';"
+  echo -n "-- Create user... "
+  $mysql_command -e "CREATE USER '$DB_NAME'@'localhost' IDENTIFIED BY '$DB_NAME';"
   echo -n "DONE"; echo
 }
 
 function mysql_user_grant {
-  echo -n "* Grant permission... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "GRANT ALL PRIVILEGES ON '$DB_DEST_DBNAME'.* TO '$DB_DEST_DBNAME'@'localhost' IDENTIFIED BY '$DB_DEST_DBNAME';"
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "FLUSH PRIVILEGES;"
+  echo -n "-- Grant permission... "
+  $mysql_command -e "GRANT ALL PRIVILEGES ON '$DB_NAME'.* TO '$DB_NAME'@'localhost' IDENTIFIED BY '$DB_NAME';"
+  $mysql_command -e "FLUSH PRIVILEGES;"
   echo -n "DONE"; echo
 }
 
 function mysql_db_drop {
-  echo -n "* Purge database... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "DROP DATABASE \`$DB_DEST_DBNAME\`;"
+  echo -n "-- Purge database... "
+  $mysql_command -e "DROP DATABASE \`$DB_NAME\`;"
   echo -n "DONE"; echo
 }
 
 function mysql_db_create {
-  echo -n "* Creating database ... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "CREATE DATABASE IF NOT EXISTS \`$DB_DEST_DBNAME\` CHARACTER SET utf8 COLLATE utf8_general_ci;"
+  echo -n "-- Creating database ... "
+  $mysql_command -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8 COLLATE utf8_general_ci;"
   echo "DONE"
-  echo -n "* Fill database... "
-  case "$DB_DEST_EXT" in
+  echo -n "-- Fill database... "
+  case "$DB_EXT" in
     sql)
-      cat $DB_DEST_DBFILE | $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER $DB_DEST_DBNAME
+      cat "$DB_FILE" | $mysql_command $DB_NAME
       echo -n "DONE"; echo;;
 
     gz)
-      zcat $DB_DEST_DBFILE | $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER $DB_DEST_DBNAME
+      zcat "$DB_FILE" | $mysql_command $DB_NAME
       echo -n "DONE"; echo;;
 
     *)  usage;exit 0;;

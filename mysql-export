@@ -1,0 +1,96 @@
+#!/bin/bash
+
+mysql=`which mysql`
+mysqldump=`which mysqldump`
+
+export MYSQL_PWD
+
+DB_NAME=$1
+DB_USER="root"
+DB_HOST=""
+DB_PORT=""
+
+function checking_vars {
+  echo -n "* Checking if needed vars are set... "
+  ERROR_MSG=""
+	if [ -z "$DB_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_USER";fi
+	if [ -z "$DB_HOST" ]; then DB_HOST="localhost";fi
+  if [ -z "$DB_PORT" ]; then DB_PORT="3306";fi
+	if [ ! -z "$ERROR_MSG" ]; then fatal "$ERROR_MSG";fi
+	echo "DONE"
+}
+
+function checking_mysql {
+  echo -en "* Checking mysql... "
+  if ! type "$mysql" > /dev/null; then
+    echo "mysql does not exist. Try apt install mysql-client"; exit 0
+  fi
+  echo "DONE"
+}
+
+function checking_connexion {
+  read -s -p "Enter MYSQL root password: " MYSQL_PWD; echo
+  while ! $mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$MYSQL_PWD" -e ";" 2>/dev/null ; do
+    read -s -p "Can't connect, please retry: " MYSQL_PWD; echo
+  done
+
+  mysql_command="$mysql -h $DB_HOST -P $DB_PORT -u $DB_USER"
+  mysqldump_command="$mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER"
+}
+
+function create_directory {
+  DIR=`pwd`/`date -I`
+  mkdir -p $DIR
+}
+
+function performance_export_construct {
+  echo "SET autocommit=0;SET unique_checks=0;SET foreign_key_checks=0;" > tmp_sqlhead.sql
+  echo "SET autocommit=1;SET unique_checks=1;SET foreign_key_checks=1;" > tmp_sqlend.sql
+}
+
+function performance_export_destroy {
+  rm tmp_sqlhead.sql
+  rm tmp_sqlend.sql
+}
+
+function export_databases {
+  for I in $($mysql_command -e 'show databases' -s --skip-column-names); do
+    if [ "$I" = information_schema ] || [ "$I" =  mysql ] || [ "$I" =  sys ] || [ "$I" =  phpmyadmin ] || [ "$I" =  performance_schema ]; then
+      echo "-- Skip $I"
+      continue
+    fi
+    echo -n "-- Dumping $I... "
+    $mysqldump_command --skip-comments --add-drop-table $I | cat tmp_sqlhead.sql - tmp_sqlend.sql | gzip -fc > "$DIR/$I.sql.gz"
+    echo "DONE"
+  done
+}
+
+function export_database {
+  echo -n "-- Dumping $DB_NAME... "
+  $mysqldump_command --skip-comments --add-drop-table $DB_NAME | cat tmp_sqlhead.sql - tmp_sqlend.sql | gzip -fc > "$DIR/$DB_NAME.sql.gz"
+  echo "DONE"
+}
+
+case $1 in
+    -h|help)
+      echo "Usage: `basename $0` [database] "
+      exit 0;;
+    "")
+      checking_vars
+      checking_mysql
+      checking_connexion
+      create_directory
+      performance_export_construct
+      export_databases
+      performance_export_destroy
+      exit 0;;
+    *)
+      checking_vars
+      checking_mysql
+      checking_connexion
+      create_directory
+      performance_export_construct
+      export_database
+      performance_export_destroy
+      exit 0;;
+esac
