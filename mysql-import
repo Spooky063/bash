@@ -12,7 +12,7 @@ DB_DEST_HOST=""
 DB_DEST_PORT=""
 
 function checking_vars {
-  echo -n "* Checking if needed vars are set ... "
+  echo -n "* Checking if needed vars are set... "
     ERROR_MSG=""
   		if [ -z "$DB_DEST_DBNAME" ]; then ERROR_MSG="$ERROR_MSG NO DB_DEST_DBNAME";fi
   		if [ -z "$DB_DEST_USER" ]; then ERROR_MSG="$ERROR_MSG NO DB_DEST_USER";fi
@@ -23,7 +23,7 @@ function checking_vars {
 }
 
 function checking_mysql {
-  echo -en "* Checking mysql ... "
+  echo -en "* Checking mysql... "
   if ! type "$mysql" > /dev/null; then
     echo "mysql does not exist. Try apt install mysql-client"; exit 0
   fi
