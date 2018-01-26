@@ -50,7 +50,6 @@ function checking_database {
     case "$DOWEPURGE" in
     	'y')
   		mysql_db_drop
-  		OVERRIDEUSERCREATION="true"
   		;;
     	*)
     		echo "$DB_DEST_DBNAME has not been dropped."; exit 0
