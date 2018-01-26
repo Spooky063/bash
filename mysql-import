@@ -75,7 +75,7 @@ function mysql_user_create {
 
 function mysql_user_grant {
   echo -n "* Grant permission... "
-  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "GRANT ALL PRIVILEGES ON '$DB_DEST_DBNAME'.* TO '$DB_DEST_DBNAME'@'localhost' IDENTIFIED BY '$MYSQL_PWD';"
+  $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "GRANT ALL PRIVILEGES ON '$DB_DEST_DBNAME'.* TO '$DB_DEST_DBNAME'@'localhost' IDENTIFIED BY '$DB_DEST_DBNAME';"
   $mysql -h $DB_DEST_HOST -P $DB_DEST_PORT -u $DB_DEST_USER -e "FLUSH PRIVILEGES;"
   echo -n "DONE"; echo
 }
